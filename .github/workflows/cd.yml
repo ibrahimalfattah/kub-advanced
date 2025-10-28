@@ -45,5 +45,5 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             echo "📦 Deploying service ${{ github.event.client_payload.service }}"
-            kubectl apply -f ~/deployments/infra/services/${{ github.event.client_payload.service }}-deployment.yaml
-            kubectl rollout status deployment/infra/services/${{ github.event.client_payload.service }} -n default
+            kubectl apply -f ~/deployments/${{ github.event.client_payload.service }}-deployment.yaml -n default
+            kubectl rollout status deployment/${{ github.event.client_payload.service }} -n default
