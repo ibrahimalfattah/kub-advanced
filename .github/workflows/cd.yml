@@ -1,4 +1,4 @@
-name: CD - Deploy Service to Kubernetes (Kind)
+name: CD - Deploy Service on Server (via SSH)
 
 on:
   repository_dispatch:
@@ -8,54 +8,31 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout infra repo
-      - name: Checkout repository
+      - name: Checkout repo
         uses: actions/checkout@v4
 
-      # 2️⃣ Show what’s being deployed
-      - name: Show Deployment Info
+      - name: Deployment Info
         run: |
-          echo "🚀 Deploying service: ${{ github.event.client_payload.service }}"
-          echo "🖼️ Using image: ${{ github.event.client_payload.image }}"
+          echo "Service: ${{ github.event.client_payload.service }}"
+          echo "Image: ${{ github.event.client_payload.image }}"
 
-      # 3️⃣ Update deployment manifest dynamically
-      - name: Update image in YAML
+      - name: Update deployment YAML image
         run: |
           SERVICE=${{ github.event.client_payload.service }}
           IMAGE=${{ github.event.client_payload.image }}
           FILE="infra/services/${SERVICE}-deployment.yaml"
-
-          if [ ! -f "$FILE" ]; then
-            echo "❌ Deployment file $FILE not found!"
-            exit 1
-          fi
-
-          echo "✅ Updating $FILE with image $IMAGE"
           sed -i "s|image:.*|image: ${IMAGE}|g" $FILE
 
-      # 4️⃣ Set up kubectl
-      - name: Set up kubectl
-        uses: azure/setup-kubectl@v4
+      # 🚀 SSH into server and deploy
+      - name: Deploy to Kind cluster via SSH
+        uses: appleboy/ssh-action@v1.2.0
         with:
-          version: "v1.30.0"
-
-      # 5️⃣ Configure kubeconfig (Kind cluster access)
-      - name: Configure kubeconfig
-        run: |
-          mkdir -p ~/.kube
-          echo "${{ secrets.KUBECONFIG_CONTENT }}" > ~/.kube/config
-          chmod 600 ~/.kube/config
-
-      # 6️⃣ Deploy service to cluster
-      - name: Apply manifests
-        run: |
-          SERVICE=${{ github.event.client_payload.service }}
-          echo "📦 Applying deployment and service for $SERVICE"
-          kubectl apply -f infra/services/${SERVICE}-deployment.yaml
-      
-      # 7️⃣ Verify rollout
-      - name: Verify deployment
-        run: |
-          SERVICE=${{ github.event.client_payload.service }}
-          echo "🕒 Checking rollout status..."
-          kubectl rollout status deployment/${SERVICE} -n dev
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd ~/kub-advanced
+            git pull origin main
+            kubectl apply -f infra/services/${{ github.event.client_payload.service }}-deployment.yaml
+            kubectl apply -f infra/services/${{ github.event.client_payload.service }}-service.yaml
+            kubectl rollout status deployment/${{ github.event.client_payload.service }} -n dev
