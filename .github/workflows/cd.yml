@@ -31,6 +31,5 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            cd ~/kub-advanced
             kubectl apply -f infra/services/${{ github.event.client_payload.service }}-deployment.yaml
             kubectl rollout status deployment/${{ github.event.client_payload.service }} -n dev
