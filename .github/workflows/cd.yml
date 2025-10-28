@@ -1,4 +1,4 @@
-name: CD - Deploy Service on Server (via SSH)
+name: CD - Deploy Service to Kind (via SSH + SCP)
 
 on:
   repository_dispatch:
@@ -8,28 +8,42 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo
+      # 1️⃣ Checkout infra repo
+      - name: Checkout repository
         uses: actions/checkout@v4
 
+      # 2️⃣ Show deployment info
       - name: Deployment Info
         run: |
           echo "Service: ${{ github.event.client_payload.service }}"
           echo "Image: ${{ github.event.client_payload.image }}"
 
-      - name: Update deployment YAML image
+      # 3️⃣ Update image inside YAML
+      - name: Update image in deployment
         run: |
           SERVICE=${{ github.event.client_payload.service }}
           IMAGE=${{ github.event.client_payload.image }}
           FILE="infra/services/${SERVICE}-deployment.yaml"
           sed -i "s|image:.*|image: ${IMAGE}|g" $FILE
 
-      # 🚀 SSH into server and deploy
-      - name: Deploy to Kind cluster via SSH
+      # 4️⃣ Copy YAMLs to server (SCP)
+      - name: Copy deployment YAMLs to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "infra/services/${{ github.event.client_payload.service }}-deployment.yaml,infra/services/${{ github.event.client_payload.service }}-service.yaml"
+          target: "~/deployments/"
+
+      # 5️⃣ SSH into server and deploy
+      - name: Apply manifests on server
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            kubectl apply -f infra/services/${{ github.event.client_payload.service }}-deployment.yaml
+            echo "📦 Deploying service ${{ github.event.client_payload.service }}"
+            kubectl apply -f ~/deployments/${{ github.event.client_payload.service }}-deployment.yaml
             kubectl rollout status deployment/${{ github.event.client_payload.service }} -n dev
