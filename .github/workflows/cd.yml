@@ -34,5 +34,4 @@ jobs:
             cd ~/kub-advanced
             git pull origin main
             kubectl apply -f infra/services/${{ github.event.client_payload.service }}-deployment.yaml
-            kubectl apply -f infra/services/${{ github.event.client_payload.service }}-service.yaml
             kubectl rollout status deployment/${{ github.event.client_payload.service }} -n dev
