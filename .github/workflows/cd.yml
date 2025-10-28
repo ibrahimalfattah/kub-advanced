@@ -1,0 +1,61 @@
+name: CD - Deploy Service to Kubernetes (Kind)
+
+on:
+  repository_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1️⃣ Checkout infra repo
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2️⃣ Show what’s being deployed
+      - name: Show Deployment Info
+        run: |
+          echo "🚀 Deploying service: ${{ github.event.client_payload.service }}"
+          echo "🖼️ Using image: ${{ github.event.client_payload.image }}"
+
+      # 3️⃣ Update deployment manifest dynamically
+      - name: Update image in YAML
+        run: |
+          SERVICE=${{ github.event.client_payload.service }}
+          IMAGE=${{ github.event.client_payload.image }}
+          FILE="kubernetes/services/${SERVICE}-deployment.yaml"
+
+          if [ ! -f "$FILE" ]; then
+            echo "❌ Deployment file $FILE not found!"
+            exit 1
+          fi
+
+          echo "✅ Updating $FILE with image $IMAGE"
+          sed -i "s|image:.*|image: ${IMAGE}|g" $FILE
+
+      # 4️⃣ Set up kubectl
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: "v1.30.0"
+
+      # 5️⃣ Configure kubeconfig (Kind cluster access)
+      - name: Configure kubeconfig
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBECONFIG_CONTENT }}" > ~/.kube/config
+          chmod 600 ~/.kube/config
+
+      # 6️⃣ Deploy service to cluster
+      - name: Apply manifests
+        run: |
+          SERVICE=${{ github.event.client_payload.service }}
+          echo "📦 Applying deployment and service for $SERVICE"
+          kubectl apply -f infra/services/${SERVICE}-deployment.yaml
+      
+      # 7️⃣ Verify rollout
+      - name: Verify deployment
+        run: |
+          SERVICE=${{ github.event.client_payload.service }}
+          echo "🕒 Checking rollout status..."
+          kubectl rollout status deployment/${SERVICE} -n dev
