@@ -17,5 +17,6 @@ spec:
       - name: service-a
         image: redis:7        # ← will be updated automatically
         ports:
-        - containerPort: 80
+        - containerPort: 6379
+
 
