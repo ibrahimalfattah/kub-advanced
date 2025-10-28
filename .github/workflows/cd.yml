@@ -33,7 +33,7 @@ jobs:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "infra/services/${{ github.event.client_payload.service }}-deployment.yaml,infra/services/${{ github.event.client_payload.service }}-service.yaml"
+          source: "infra/services/${{ github.event.client_payload.service }}-deployment.yaml"
           target: "~/deployments/"
 
       # 5️⃣ SSH into server and deploy
@@ -45,5 +45,5 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             echo "📦 Deploying service ${{ github.event.client_payload.service }}"
-            kubectl apply -f ~/deployments/${{ github.event.client_payload.service }}-deployment.yaml
-            kubectl rollout status deployment/${{ github.event.client_payload.service }} -n dev
+            kubectl apply -f ~/deployments/infra/services/${{ github.event.client_payload.service }}-deployment.yaml
+            kubectl rollout status deployment/infra/services/${{ github.event.client_payload.service }} -n default
