@@ -23,7 +23,7 @@ jobs:
         run: |
           SERVICE=${{ github.event.client_payload.service }}
           IMAGE=${{ github.event.client_payload.image }}
-          FILE="kubernetes/services/${SERVICE}-deployment.yaml"
+          FILE="infra/services/${SERVICE}-deployment.yaml"
 
           if [ ! -f "$FILE" ]; then
             echo "❌ Deployment file $FILE not found!"
