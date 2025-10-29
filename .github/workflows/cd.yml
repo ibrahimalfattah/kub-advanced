@@ -1,4 +1,4 @@
-name: CD - Deploy Service to Kind (via SSH + SCP)
+name: CD - Deploy Single Service to Kind (via SSH + SCP)
 
 on:
   repository_dispatch:
@@ -15,28 +15,35 @@ jobs:
       # 2️⃣ Show deployment info
       - name: Deployment Info
         run: |
-          echo "Service: ${{ github.event.client_payload.service }}"
-          echo "Image: ${{ github.event.client_payload.image }}"
+          echo "🚀 Deploying service: ${{ github.event.client_payload.service }}"
+          echo "🖼️ Image: ${{ github.event.client_payload.image }}"
 
-      # 3️⃣ Update image inside YAML
+      # 3️⃣ Update image inside the service's deployment YAML
       - name: Update image in deployment
         run: |
           SERVICE=${{ github.event.client_payload.service }}
           IMAGE=${{ github.event.client_payload.image }}
           FILE="infra/services/${SERVICE}-deployment.yaml"
-          sed -i "s|image:.*|image: ${IMAGE}|g" $FILE
+          if [ -f "$FILE" ]; then
+            sed -i "s|image:.*|image: ${IMAGE}|g" $FILE
+          else
+            echo "❌ File not found: $FILE"
+            exit 1
+          fi
 
-      # 4️⃣ Copy YAMLs to server (SCP)
-      - name: Copy deployment YAMLs to server
+      # 4️⃣ Copy both deployment and service YAMLs to the server
+      - name: Copy YAMLs to server
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "infra/services/${{ github.event.client_payload.service }}-deployment.yaml"
+          source: |
+            infra/services/${{ github.event.client_payload.service }}-deployment.yaml,
+            infra/kub-services/${{ github.event.client_payload.service }}-service.yaml
           target: "~/deployments/"
 
-      # 5️⃣ SSH into server and deploy
+      # 5️⃣ SSH into the server and deploy both resources
       - name: Apply manifests on server
         uses: appleboy/ssh-action@v1.2.0
         with:
@@ -44,5 +51,10 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            echo "📦 Deploying service ${{ github.event.client_payload.service }}"
-            kubectl apply -f ~/deployments/infra/services/${{ github.event.client_payload.service }}-deployment.yaml -n default
+            SERVICE=${{ github.event.client_payload.service }}
+            echo "📦 Applying manifests for $SERVICE"
+            kubectl apply -f ~/deployments/infra/services/${SERVICE}-deployment.yaml -n default
+            kubectl apply -f ~/deployments/infra/kub-services/{SERVICE}-service.yaml -n default
+            echo "⏳ Waiting for rollout..."
+            kubectl rollout status deployment/${SERVICE} -n default
+            echo "✅ Deployment complete for $SERVICE"
