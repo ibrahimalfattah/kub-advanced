@@ -40,6 +40,7 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           source: |
+            infra/ingress/mongo-express-ingress.yaml,
             infra/secrets/mongo-secret.yaml,
             infra/services/${{ github.event.client_payload.service }}-deployment.yaml,
             infra/kub-services/${{ github.event.client_payload.service }}-service.yaml
@@ -54,11 +55,13 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             SERVICE=${{ github.event.client_payload.service }}
-            echo "📦 Applying mongo secret..."
+            echo "📦 Applying secret..."
             kubectl apply -f ~/deployments/infra/secrets/mongo-secret.yaml -n default
             echo "📦 Deploying service: $SERVICE"
             kubectl apply -f ~/deployments/infra/services/${SERVICE}-deployment.yaml -n default
             kubectl apply -f ~/deployments/infra/kub-services/${SERVICE}-service.yaml -n default
+               echo "📦 Applying ingres..."
+            kubectl apply -f ~/deployments/infra/ingress/mongo-express-ingress.yaml -n default
             echo "⏳ Waiting for rollout..."
             kubectl rollout status deployment/${SERVICE} -n default
             echo "✅ Deployment complete for $SERVICE"
