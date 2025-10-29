@@ -42,7 +42,7 @@ jobs:
           source: |
             infra/secrets/mongo-secret.yaml,
             infra/services/${{ github.event.client_payload.service }}-deployment.yaml,
-            infra/services/${{ github.event.client_payload.service }}-service.yaml
+            infra/kub-services/${{ github.event.client_payload.service }}-service.yaml
           target: "~/deployments/"
 
       # 🧩 Apply manifests (Secret + Deployment + Service)
@@ -55,10 +55,10 @@ jobs:
           script: |
             SERVICE=${{ github.event.client_payload.service }}
             echo "📦 Applying mongo secret..."
-            kubectl apply -f ~/deployments/mongo-secret.yaml -n dev
+            kubectl apply -f ~/deployments/infra/secrets/mongo-secret.yaml -n default
             echo "📦 Deploying service: $SERVICE"
-            kubectl apply -f ~/deployments/${SERVICE}-deployment.yaml -n dev
-            kubectl apply -f ~/deployments/${SERVICE}-service.yaml -n dev
+            kubectl apply -f ~/deployments/infra/services/${SERVICE}-deployment.yaml -n default
+            kubectl apply -f ~/deployments/infra/kub-services/${SERVICE}-service.yaml -n default
             echo "⏳ Waiting for rollout..."
-            kubectl rollout status deployment/${SERVICE} -n dev
+            kubectl rollout status deployment/${SERVICE} -n default
             echo "✅ Deployment complete for $SERVICE"
