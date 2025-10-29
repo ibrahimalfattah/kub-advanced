@@ -32,6 +32,7 @@ jobs:
           fi
 
       # 4️⃣ Copy both deployment and service YAMLs to the server
+      # 🧩 Copy secret and service YAMLs to server
       - name: Copy YAMLs to server
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -39,11 +40,12 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           source: |
+            infra/secrets/mongo-secret.yaml,
             infra/services/${{ github.event.client_payload.service }}-deployment.yaml,
-            infra/kub-services/${{ github.event.client_payload.service }}-service.yaml
+            infra/services/${{ github.event.client_payload.service }}-service.yaml
           target: "~/deployments/"
 
-      # 5️⃣ SSH into the server and deploy both resources
+      # 🧩 Apply manifests (Secret + Deployment + Service)
       - name: Apply manifests on server
         uses: appleboy/ssh-action@v1.2.0
         with:
@@ -52,9 +54,11 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             SERVICE=${{ github.event.client_payload.service }}
-            echo "📦 Applying manifests for $SERVICE"
-            kubectl apply -f ~/deployments/infra/services/${SERVICE}-deployment.yaml -n default
-            kubectl apply -f ~/deployments/infra/kub-services/{SERVICE}-service.yaml -n default
+            echo "📦 Applying mongo secret..."
+            kubectl apply -f ~/deployments/mongo-secret.yaml -n dev
+            echo "📦 Deploying service: $SERVICE"
+            kubectl apply -f ~/deployments/${SERVICE}-deployment.yaml -n dev
+            kubectl apply -f ~/deployments/${SERVICE}-service.yaml -n dev
             echo "⏳ Waiting for rollout..."
-            kubectl rollout status deployment/${SERVICE} -n default
+            kubectl rollout status deployment/${SERVICE} -n dev
             echo "✅ Deployment complete for $SERVICE"
