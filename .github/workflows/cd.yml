@@ -62,4 +62,4 @@ jobs:
         run: |
           SERVICE=${{ github.event.client_payload.service }}
           echo "🕒 Checking rollout status..."
-          kubectl rollout status deployment/${SERVICE} -n default
+          kubectl rollout status deployment/${SERVICE}-deployment -n default
