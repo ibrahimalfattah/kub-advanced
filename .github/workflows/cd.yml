@@ -54,7 +54,7 @@ jobs:
           kubectl apply -f infra/secrets/mongo-secret.yaml
           kubectl apply -f infra/services/${SERVICE}-deployment.yaml
           kubectl apply -f infra/kub-services/${SERVICE}-service.yaml
-          kubectl apply -f infra/ingress/mongo-express.yaml
+          kubectl apply -f infra/ingress/mongo-express-ingress.yaml
         
 
       # 7️⃣ Verify rollout
